@@ -16,11 +16,14 @@ exports.dbConfig = void 0;
 exports.createConnection = createConnection;
 exports.executeQuery = executeQuery;
 const promise_1 = __importDefault(require("mysql2/promise"));
+const dotenv_1 = __importDefault(require("dotenv"));
+// Load environment variables
+dotenv_1.default.config();
 exports.dbConfig = {
-    host: 'localhost',
-    user: 'root',
-    password: '1234',
-    database: 'betting_platform'
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '1234',
+    database: process.env.DB_DATABASE || 'betting_platform'
 };
 function createConnection() {
     return __awaiter(this, void 0, void 0, function* () {

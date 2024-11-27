@@ -1,10 +1,14 @@
 import mysql, { Connection, RowDataPacket } from 'mysql2/promise';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 export const dbConfig = {
-    host: 'localhost',
-    user: 'root',
-    password: '1234',
-    database: 'betting_platform'
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '1234',
+    database: process.env.DB_DATABASE || 'betting_platform'
 };
 
 export async function createConnection(): Promise<Connection> {
