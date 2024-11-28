@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carteira - Sistema de Apostas</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="dashboard-container">
+            <div class="header">
+                <h1>BETSBETS</h1>
+                <div id="walletBalance" class="wallet-balance"></div>
+            </div>
+            <div class="wallet-controls">
+                <button onclick="showDepositModal()" class="deposit-button">Depositar</button>
+                <button onclick="showWithdrawModal()" class="withdraw-button">Sacar</button>
+                <a href="../dashboard/dashboard.html" class="nav-link">Voltar ao Dashboard</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Depósito -->
+    <div id="depositModal" class="modal">
+        <div class="modal-content">
+            <h2>Depositar Dinheiro</h2>
+            <form id="depositForm">
+                <div class="form-group">
+                    <label for="depositAmount">Valor (R$):</label>
+                    <input type="number" id="depositAmount" min="0" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="depositCardNumber">Número do Cartão:</label>
+                    <input type="text" id="depositCardNumber" maxlength="16" placeholder="1234 5678 9012 3456" required>
+                </div>
+                <div class="card-details">
+                    <div class="form-group">
+                        <label for="depositCardExpiry">Validade:</label>
+                        <input type="text" id="depositCardExpiry" maxlength="5" placeholder="MM/AA" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="depositCardCVV">CVV:</label>
+                        <input type="text" id="depositCardCVV" maxlength="3" placeholder="123" required>
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button type="submit">Confirmar Depósito</button>
+                    <button type="button" onclick="closeDepositModal()">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Saque -->
+    <div id="withdrawModal" class="modal">
+        <div class="modal-content">
+            <h2>Sacar Dinheiro</h2>
+            <form id="withdrawForm">
+                <div class="form-group">
+                    <label for="withdrawAmount">Valor (R$):</label>
+                    <input type="number" id="withdrawAmount" min="0" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="withdrawCardNumber">Número do Cartão:</label>
+                    <input type="text" id="withdrawCardNumber" maxlength="16" placeholder="1234 5678 9012 3456" required>
+                </div>
+                <div class="card-details">
+                    <div class="form-group">
+                        <label for="withdrawCardExpiry">Validade:</label>
+                        <input type="text" id="withdrawCardExpiry" maxlength="5" placeholder="MM/AA" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="withdrawCardCVV">CVV:</label>
+                        <input type="text" id="withdrawCardCVV" maxlength="3" placeholder="123" required>
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button type="submit">Confirmar Saque</button>
+                    <button type="button" onclick="closeWithdrawModal()">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="../config.js"></script>
+    <script src="wallet.js"></script>
+</body>
+</html> 

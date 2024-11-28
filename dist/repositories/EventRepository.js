@@ -138,5 +138,53 @@ class EventRepository {
             }
         });
     }
+    softDeleteEvent(eventId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const connection = yield (0, database_1.createConnection)();
+            try {
+                yield connection.execute(`UPDATE ${this.tableName} SET status = 'DELETED' WHERE id = ?`, [eventId]);
+            }
+            finally {
+                yield connection.end();
+            }
+        });
+    }
+    getEventCreator(eventId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            const connection = yield (0, database_1.createConnection)();
+            try {
+                const [rows] = yield connection.execute(`SELECT creator_id FROM ${this.tableName} WHERE id = ?`, [eventId]);
+                return (_a = rows[0]) === null || _a === void 0 ? void 0 : _a.creator_id;
+            }
+            finally {
+                yield connection.end();
+            }
+        });
+    }
+    getEventsByUser(userId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const connection = yield (0, database_1.createConnection)();
+            try {
+                const [rows] = yield connection.execute(`SELECT * FROM ${this.tableName} WHERE creator_id = ? AND status != 'DELETED'`, [userId]);
+                return rows;
+            }
+            finally {
+                yield connection.end();
+            }
+        });
+    }
+    getPendingEvents() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const connection = yield (0, database_1.createConnection)();
+            try {
+                const [rows] = yield connection.execute(`SELECT * FROM ${this.tableName} WHERE status = 'PENDING'`);
+                return rows;
+            }
+            finally {
+                yield connection.end();
+            }
+        });
+    }
 }
 exports.EventRepository = EventRepository;

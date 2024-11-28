@@ -62,4 +62,8 @@ export class EventService {
         }
         return this.eventRepository.searchByKeyword(keyword);
     }
+
+    async getEventsByUser(userId: number): Promise<Event[]> {
+        return await this.eventRepository.getEventsByUser(userId);
+    }
 } 

@@ -77,5 +77,20 @@ class UserRepository {
             }
         });
     }
+    findById(id) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const connection = yield (0, database_1.createConnection)();
+            try {
+                const [rows] = yield connection.execute(`SELECT * FROM ${this.tableName} WHERE id = ?`, [id]); // Type assertion here
+                if (!rows || rows.length === 0) {
+                    throw new Error('User not found');
+                }
+                return rows[0];
+            }
+            finally {
+                yield connection.end();
+            }
+        });
+    }
 }
 exports.UserRepository = UserRepository;

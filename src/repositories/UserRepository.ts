@@ -66,4 +66,22 @@ export class UserRepository {
             await connection.end();
         }
     }
+
+    async findById(id: number): Promise<User> {
+        const connection = await createConnection();
+        try {
+            const [rows] = await connection.execute(
+                `SELECT * FROM ${this.tableName} WHERE id = ?`,
+                [id]
+            ) as [any[], any];  // Type assertion here
+
+            if (!rows || rows.length === 0) {
+                throw new Error('User not found');
+            }
+
+            return rows[0] as User;
+        } finally {
+            await connection.end();
+        }
+    }
 } 

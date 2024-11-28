@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moderação de Eventos - Sistema de Apostas</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="dashboard-container">
+            <div class="header">
+                <h1>BETSBETS</h1>
+                <div id="walletBalance" class="wallet-balance"></div>
+            </div>
+            <div class="search-controls">
+                <button onclick="loadPendingEvents()" class="search-button">Carregar Eventos Pendentes</button>
+                <a href="../dashboard/dashboard.html" class="nav-link">Voltar ao Dashboard</a>
+            </div>
+
+            <div id="eventsList" class="events-container">
+                <!-- Events will be displayed here -->
+            </div>
+        </div>
+    </div>
+    <script src="../config.js"></script>
+    <script src="../wallet/wallet.js"></script>
+    <script src="moderate.js"></script>
+</body>
+</html> 

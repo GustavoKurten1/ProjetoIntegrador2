@@ -34,9 +34,8 @@ class WalletService {
     }
     addFunds(userId, fundsData) {
         return __awaiter(this, void 0, void 0, function* () {
-            // Simulação de validação de cartão de crédito
-            if (!fundsData.cardNumber || fundsData.cardNumber.length !== 16) {
-                throw new Error('Invalid card number');
+            if (fundsData.amount <= 0) {
+                throw new Error('O valor do depósito deve ser maior que zero');
             }
             yield this.walletRepository.createTransaction({
                 userId,
@@ -49,33 +48,34 @@ class WalletService {
     }
     withdrawFunds(userId, fundsData) {
         return __awaiter(this, void 0, void 0, function* () {
+            if (fundsData.amount <= 0) {
+                throw new Error('O valor do saque deve ser maior que zero');
+            }
             const currentBalance = yield this.walletRepository.getUserBalance(userId);
             const withdrawalFee = this.calculateWithdrawalFee(fundsData.amount);
             const totalAmount = fundsData.amount + withdrawalFee;
             if (currentBalance < totalAmount) {
-                throw new Error('Insufficient funds (including withdrawal fee)');
+                throw new Error('Saldo insuficiente (incluindo taxa de saque)');
             }
-            if (!fundsData.bankAccount) {
-                throw new Error('Bank account information is required');
-            }
-            // Registra a transação do saque
             yield this.walletRepository.createTransaction({
                 userId,
-                amount: -fundsData.amount,
+                amount: -totalAmount,
                 type: 'WITHDRAW',
                 status: 'COMPLETED'
             });
-            // Registra a transação da taxa
-            if (withdrawalFee > 0) {
-                yield this.walletRepository.createTransaction({
-                    userId,
-                    amount: -withdrawalFee,
-                    type: 'WITHDRAW',
-                    status: 'COMPLETED'
-                });
-            }
-            // Atualiza o saldo com o valor total (saque + taxa)
             yield this.walletRepository.updateUserBalance(userId, -totalAmount);
+        });
+    }
+    getBalance(userId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const balance = yield this.walletRepository.getUserBalance(userId);
+                return balance || 0;
+            }
+            catch (error) {
+                console.error('Error getting balance:', error);
+                return 0;
+            }
         });
     }
 }

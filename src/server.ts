@@ -14,6 +14,10 @@ import {
     FinishEventDTO,
     FundsDTO 
 } from './types';
+import { readFile } from 'fs/promises';
+import { join } from 'path';
+import { EventRepository } from './repositories/EventRepository';
+import { UserRepository } from './repositories/UserRepository';
 
 interface CustomError extends Error {
     status?: number;
@@ -23,6 +27,8 @@ const authService = new AuthService();
 const eventService = new EventService();
 const walletService = new WalletService();
 const betService = new BetService();
+const eventRepository = new EventRepository();
+const userRepository = new UserRepository();
 
 const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
     // Configuração CORS
@@ -37,7 +43,29 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
     }
 
     const parsedUrl = parseUrl(req.url || '', true);
-    const path = parsedUrl.pathname;
+    const path = parsedUrl.pathname || '/';
+
+    // Tratamento para arquivos estáticos
+    if (path.endsWith('.html') || path.endsWith('.js') || path.endsWith('.css')) {
+        try {
+            const filePath = join(__dirname, '../frontend', path);
+            console.log('Trying to serve file:', filePath); // Debug log
+            
+            const content = await readFile(filePath);
+            const contentType = path.endsWith('.html') ? 'text/html' :
+                              path.endsWith('.js') ? 'text/javascript' :
+                              'text/css';
+            
+            res.writeHead(200, { 'Content-Type': contentType });
+            res.end(content);
+            return;
+        } catch (error) {
+            console.error('Error serving file:', error);
+            res.writeHead(404);
+            res.end('File not found');
+            return;
+        }
+    }
 
     try {
         // Coletar dados do body
@@ -74,7 +102,7 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ 
                     message: 'Login realizado com sucesso!',
-                    token: token 
+                    token
                 }));
             } catch (error) {
                 handleError(res, error);
@@ -123,21 +151,23 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
                 return;
             }
 
-            if (path === '/deleteEvent' && req.method === 'POST') {
+            if (path.startsWith('/deleteEvent/') && req.method === 'PUT') {
                 try {
-                    const { eventId } = JSON.parse(body);
+                    const eventId = parseInt(path.split('/')[2]);
                     const userId = (req as any).user.id;
-                    console.log('Delete Event Request:', {
-                        eventId,
-                        userId,
-                        userObject: (req as any).user
-                    });
                     
-                    await eventService.deleteEvent(eventId, userId);
+                    // Verificar se o usuário é o criador do evento
+                    const creatorId = await eventRepository.getEventCreator(eventId);
+                    if (creatorId !== userId) {
+                        res.writeHead(403, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ error: 'Apenas o criador pode deletar o evento' }));
+                        return;
+                    }
+
+                    await eventRepository.softDeleteEvent(eventId);
                     res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ message: 'Evento removido com sucesso' }));
+                    res.end(JSON.stringify({ message: 'Evento deletado com sucesso' }));
                 } catch (error) {
-                    console.error('Delete Event Error:', error);
                     handleError(res, error);
                 }
                 return;
@@ -146,6 +176,7 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
             if (path === '/evaluateNewEvent' && req.method === 'POST') {
                 try {
                     const { eventId, approved } = JSON.parse(body);
+                    const userId = (req as any).user.id;
                     await eventService.evaluateNewEvent(eventId, approved);
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ message: 'Evento avaliado com sucesso' }));
@@ -155,28 +186,56 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
                 return;
             }
 
-            if (path === '/addFunds' && req.method === 'POST') {
+            if (path === '/withdraw' && req.method === 'POST') {
                 try {
                     const fundsData: FundsDTO = JSON.parse(body);
                     const userId = (req as any).user.id;
-                    await walletService.addFunds(userId, fundsData);
+                    
+                    if (!fundsData.amount || fundsData.amount <= 0) {
+                        throw new Error('Valor inválido para saque');
+                    }
+
+                    await walletService.withdrawFunds(userId, fundsData);
+                    
                     res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ message: 'Funds added successfully' }));
+                    res.end(JSON.stringify({ 
+                        message: 'Saque realizado com sucesso',
+                        success: true
+                    }));
                 } catch (error) {
-                    handleError(res, error);
+                    console.error('Erro no saque:', error);
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ 
+                        error: error instanceof Error ? error.message : 'Erro ao processar saque',
+                        success: false
+                    }));
                 }
                 return;
             }
 
-            if (path === '/withdrawFunds' && req.method === 'POST') {
+            if (path === '/deposit' && req.method === 'POST') {
                 try {
                     const fundsData: FundsDTO = JSON.parse(body);
                     const userId = (req as any).user.id;
-                    await walletService.withdrawFunds(userId, fundsData);
+                    
+                    if (!fundsData.amount || fundsData.amount <= 0) {
+                        throw new Error('Valor inválido para depósito');
+                    }
+
+                    await walletService.addFunds(userId, fundsData);
+                    
                     res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ message: 'Withdrawal successful' }));
+                    res.end(JSON.stringify({ 
+                        message: 'Depósito realizado com sucesso',
+                        success: true
+                    }));
                 } catch (error) {
-                    handleError(res, error);
+                    console.error('Erro no depósito:', error);
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ 
+                        error: error instanceof Error ? error.message : 'Erro ao processar depósito',
+                        success: false
+                    }));
                 }
                 return;
             }
@@ -213,6 +272,62 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
                 try {
                     const keyword = parsedUrl.query.keyword as string;
                     const events = await eventService.searchEvents(keyword);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify(events));
+                } catch (error) {
+                    handleError(res, error);
+                }
+                return;
+            }
+
+            if (path === '/getMyEvents' && req.method === 'GET') {
+                try {
+                    const userId = (req as any).user.id;
+                    const events = await eventRepository.getEventsByUser(userId);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify(events));
+                } catch (error) {
+                    handleError(res, error);
+                }
+                return;
+            }
+
+            if (path === '/getWalletBalance' && req.method === 'GET') {
+                try {
+                    const userId = (req as any).user.id;
+                    const balance = await walletService.getBalance(userId);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ balance: balance || 0 }));
+                } catch (error) {
+                    handleError(res, error);
+                }
+                return;
+            }
+
+            if (path === '/checkRole' && req.method === 'GET') {
+                try {
+                    const userId = (req as any).user.id;
+                    const user = await userRepository.findById(userId);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ role: user.role }));
+                } catch (error) {
+                    handleError(res, error);
+                }
+                return;
+            }
+
+            if (path === '/getPendingEvents' && req.method === 'GET') {
+                try {
+                    const userId = (req as any).user.id;
+                    const user = await userRepository.findById(userId);
+                    
+                    if (user.role !== 'MODERATOR') {
+                        res.writeHead(403, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ error: 'Acesso não autorizado' }));
+                        return;
+                    }
+
+                    const events = await eventRepository.getPendingEvents();
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify(events));
                 } catch (error) {

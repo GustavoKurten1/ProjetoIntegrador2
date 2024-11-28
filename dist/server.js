@@ -16,10 +16,16 @@ const EventService_1 = require("./services_old/EventService");
 const WalletService_1 = require("./services/WalletService");
 const BetService_1 = require("./services/BetService");
 const authMiddleware_1 = require("./middlewares/authMiddleware");
+const promises_1 = require("fs/promises");
+const path_1 = require("path");
+const EventRepository_1 = require("./repositories/EventRepository");
+const UserRepository_1 = require("./repositories/UserRepository");
 const authService = new AuthService_1.AuthService();
 const eventService = new EventService_1.EventService();
 const walletService = new WalletService_1.WalletService();
 const betService = new BetService_1.BetService();
+const eventRepository = new EventRepository_1.EventRepository();
+const userRepository = new UserRepository_1.UserRepository();
 const server = (0, http_1.createServer)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // Configuração CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -31,8 +37,28 @@ const server = (0, http_1.createServer)((req, res) => __awaiter(void 0, void 0, 
         return;
     }
     const parsedUrl = (0, url_1.parse)(req.url || '', true);
-    const path = parsedUrl.pathname;
+    const path = parsedUrl.pathname || '/';
     try {
+        // Tratamento para arquivos estáticos (deve vir antes do middleware de autenticação)
+        if (path.endsWith('.html') || path.endsWith('.js') || path.endsWith('.css')) {
+            try {
+                // Se o path for '/', carregue index.html
+                const actualPath = path === '/' ? '/index.html' : path;
+                const filePath = (0, path_1.join)(__dirname, '../frontend', actualPath);
+                const content = yield (0, promises_1.readFile)(filePath);
+                const contentType = actualPath.endsWith('.html') ? 'text/html' :
+                    actualPath.endsWith('.js') ? 'text/javascript' :
+                        'text/css';
+                res.writeHead(200, { 'Content-Type': contentType });
+                res.end(content);
+                return;
+            }
+            catch (error) {
+                res.writeHead(404);
+                res.end('File not found');
+                return;
+            }
+        }
         // Coletar dados do body
         let body = '';
         req.on('data', chunk => {
@@ -63,7 +89,7 @@ const server = (0, http_1.createServer)((req, res) => __awaiter(void 0, void 0, 
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
                     message: 'Login realizado com sucesso!',
-                    token: token
+                    token
                 }));
             }
             catch (error) {
@@ -108,21 +134,22 @@ const server = (0, http_1.createServer)((req, res) => __awaiter(void 0, void 0, 
                 }
                 return;
             }
-            if (path === '/deleteEvent' && req.method === 'POST') {
+            if (path.startsWith('/deleteEvent/') && req.method === 'PUT') {
                 try {
-                    const { eventId } = JSON.parse(body);
+                    const eventId = parseInt(path.split('/')[2]);
                     const userId = req.user.id;
-                    console.log('Delete Event Request:', {
-                        eventId,
-                        userId,
-                        userObject: req.user
-                    });
-                    yield eventService.deleteEvent(eventId, userId);
+                    // Verificar se o usuário é o criador do evento
+                    const creatorId = yield eventRepository.getEventCreator(eventId);
+                    if (creatorId !== userId) {
+                        res.writeHead(403, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ error: 'Apenas o criador pode deletar o evento' }));
+                        return;
+                    }
+                    yield eventRepository.softDeleteEvent(eventId);
                     res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ message: 'Evento removido com sucesso' }));
+                    res.end(JSON.stringify({ message: 'Evento deletado com sucesso' }));
                 }
                 catch (error) {
-                    console.error('Delete Event Error:', error);
                     handleError(res, error);
                 }
                 return;
@@ -130,6 +157,7 @@ const server = (0, http_1.createServer)((req, res) => __awaiter(void 0, void 0, 
             if (path === '/evaluateNewEvent' && req.method === 'POST') {
                 try {
                     const { eventId, approved } = JSON.parse(body);
+                    const userId = req.user.id;
                     yield eventService.evaluateNewEvent(eventId, approved);
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ message: 'Evento avaliado com sucesso' }));
@@ -139,29 +167,51 @@ const server = (0, http_1.createServer)((req, res) => __awaiter(void 0, void 0, 
                 }
                 return;
             }
-            if (path === '/addFunds' && req.method === 'POST') {
+            if (path === '/withdraw' && req.method === 'POST') {
                 try {
                     const fundsData = JSON.parse(body);
                     const userId = req.user.id;
-                    yield walletService.addFunds(userId, fundsData);
+                    if (!fundsData.amount || fundsData.amount <= 0) {
+                        throw new Error('Valor inválido para saque');
+                    }
+                    yield walletService.withdrawFunds(userId, fundsData);
                     res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ message: 'Funds added successfully' }));
+                    res.end(JSON.stringify({
+                        message: 'Saque realizado com sucesso',
+                        success: true
+                    }));
                 }
                 catch (error) {
-                    handleError(res, error);
+                    console.error('Erro no saque:', error);
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({
+                        error: error instanceof Error ? error.message : 'Erro ao processar saque',
+                        success: false
+                    }));
                 }
                 return;
             }
-            if (path === '/withdrawFunds' && req.method === 'POST') {
+            if (path === '/deposit' && req.method === 'POST') {
                 try {
                     const fundsData = JSON.parse(body);
                     const userId = req.user.id;
-                    yield walletService.withdrawFunds(userId, fundsData);
+                    if (!fundsData.amount || fundsData.amount <= 0) {
+                        throw new Error('Valor inválido para depósito');
+                    }
+                    yield walletService.addFunds(userId, fundsData);
                     res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ message: 'Withdrawal successful' }));
+                    res.end(JSON.stringify({
+                        message: 'Depósito realizado com sucesso',
+                        success: true
+                    }));
                 }
                 catch (error) {
-                    handleError(res, error);
+                    console.error('Erro no depósito:', error);
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({
+                        error: error instanceof Error ? error.message : 'Erro ao processar depósito',
+                        success: false
+                    }));
                 }
                 return;
             }
@@ -197,6 +247,60 @@ const server = (0, http_1.createServer)((req, res) => __awaiter(void 0, void 0, 
                 try {
                     const keyword = parsedUrl.query.keyword;
                     const events = yield eventService.searchEvents(keyword);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify(events));
+                }
+                catch (error) {
+                    handleError(res, error);
+                }
+                return;
+            }
+            if (path === '/getMyEvents' && req.method === 'GET') {
+                try {
+                    const userId = req.user.id;
+                    const events = yield eventRepository.getEventsByUser(userId);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify(events));
+                }
+                catch (error) {
+                    handleError(res, error);
+                }
+                return;
+            }
+            if (path === '/getWalletBalance' && req.method === 'GET') {
+                try {
+                    const userId = req.user.id;
+                    const balance = yield walletService.getBalance(userId);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ balance: balance || 0 }));
+                }
+                catch (error) {
+                    handleError(res, error);
+                }
+                return;
+            }
+            if (path === '/checkRole' && req.method === 'GET') {
+                try {
+                    const userId = req.user.id;
+                    const user = yield userRepository.findById(userId);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ role: user.role }));
+                }
+                catch (error) {
+                    handleError(res, error);
+                }
+                return;
+            }
+            if (path === '/getPendingEvents' && req.method === 'GET') {
+                try {
+                    const userId = req.user.id;
+                    const user = yield userRepository.findById(userId);
+                    if (user.role !== 'MODERATOR') {
+                        res.writeHead(403, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ error: 'Acesso não autorizado' }));
+                        return;
+                    }
+                    const events = yield eventRepository.getPendingEvents();
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify(events));
                 }

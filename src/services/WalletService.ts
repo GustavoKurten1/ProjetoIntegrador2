@@ -23,9 +23,8 @@ export class WalletService {
     }
 
     async addFunds(userId: number, fundsData: FundsDTO): Promise<void> {
-        // Simulação de validação de cartão de crédito
-        if (!fundsData.cardNumber || fundsData.cardNumber.length !== 16) {
-            throw new Error('Invalid card number');
+        if (fundsData.amount <= 0) {
+            throw new Error('O valor do depósito deve ser maior que zero');
         }
 
         await this.walletRepository.createTransaction({
@@ -39,37 +38,35 @@ export class WalletService {
     }
 
     async withdrawFunds(userId: number, fundsData: FundsDTO): Promise<void> {
+        if (fundsData.amount <= 0) {
+            throw new Error('O valor do saque deve ser maior que zero');
+        }
+
         const currentBalance = await this.walletRepository.getUserBalance(userId);
         const withdrawalFee = this.calculateWithdrawalFee(fundsData.amount);
         const totalAmount = fundsData.amount + withdrawalFee;
         
         if (currentBalance < totalAmount) {
-            throw new Error('Insufficient funds (including withdrawal fee)');
+            throw new Error('Saldo insuficiente (incluindo taxa de saque)');
         }
 
-        if (!fundsData.bankAccount) {
-            throw new Error('Bank account information is required');
-        }
-
-        // Registra a transação do saque
         await this.walletRepository.createTransaction({
             userId,
-            amount: -fundsData.amount,
+            amount: -totalAmount,
             type: 'WITHDRAW',
             status: 'COMPLETED'
         });
 
-        // Registra a transação da taxa
-        if (withdrawalFee > 0) {
-            await this.walletRepository.createTransaction({
-                userId,
-                amount: -withdrawalFee,
-                type: 'WITHDRAW',
-                status: 'COMPLETED'
-            });
-        }
-
-        // Atualiza o saldo com o valor total (saque + taxa)
         await this.walletRepository.updateUserBalance(userId, -totalAmount);
+    }
+
+    async getBalance(userId: number): Promise<number> {
+        try {
+            const balance = await this.walletRepository.getUserBalance(userId);
+            return balance || 0;
+        } catch (error) {
+            console.error('Error getting balance:', error);
+            return 0;
+        }
     }
 } 

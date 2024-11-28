@@ -137,4 +137,54 @@ export class EventRepository {
             await connection.end();
         }
     }
+
+    async softDeleteEvent(eventId: number): Promise<void> {
+        const connection = await createConnection();
+        try {
+            await connection.execute(
+                `UPDATE ${this.tableName} SET status = 'DELETED' WHERE id = ?`,
+                [eventId]
+            );
+        } finally {
+            await connection.end();
+        }
+    }
+
+    async getEventCreator(eventId: number): Promise<number> {
+        const connection = await createConnection();
+        try {
+            const [rows] = await connection.execute(
+                `SELECT creator_id FROM ${this.tableName} WHERE id = ?`,
+                [eventId]
+            );
+            return (rows as any[])[0]?.creator_id;
+        } finally {
+            await connection.end();
+        }
+    }
+
+    async getEventsByUser(userId: number): Promise<Event[]> {
+        const connection = await createConnection();
+        try {
+            const [rows] = await connection.execute(
+                `SELECT * FROM ${this.tableName} WHERE creator_id = ? AND status != 'DELETED'`,
+                [userId]
+            );
+            return rows as Event[];
+        } finally {
+            await connection.end();
+        }
+    }
+
+    async getPendingEvents(): Promise<Event[]> {
+        const connection = await createConnection();
+        try {
+            const [rows] = await connection.execute(
+                `SELECT * FROM ${this.tableName} WHERE status = 'PENDING'`
+            );
+            return rows as Event[];
+        } finally {
+            await connection.end();
+        }
+    }
 } 

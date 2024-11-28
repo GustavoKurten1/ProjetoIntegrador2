@@ -70,5 +70,10 @@ class EventService {
             return this.eventRepository.searchByKeyword(keyword);
         });
     }
+    getEventsByUser(userId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return yield this.eventRepository.getEventsByUser(userId);
+        });
+    }
 }
 exports.EventService = EventService;
