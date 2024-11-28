@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 ﻿# PROJETO INTEGRADOR
 # Turma 2
 # Grupo 12:
@@ -9,5 +9,4 @@
     Rodrigo Sartorelli Fussi: 24000248
 
  # PLATAFORMA WEB DE APOSTAS EM EVENTOS FUTUROS 
-=======
->>>>>>> 5c02d2c (frontend)
+
