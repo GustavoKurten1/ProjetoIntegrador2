@@ -99,11 +99,11 @@ function displayEvents(events) {
             <h3>${event.title}</h3>
             <p class="event-description">${event.description}</p>
             <div class="event-details">
-                <p><strong>Status:</strong> ${event.status}</p>
-                <p><strong>Data do Evento:</strong> ${formatDate(event.eventDate)}</p>
+                 <p><strong>Status:</strong> ${event.status}</p>
+                <p><strong>Data do Evento:</strong> ${formatDate(event.event_date)}</p>
                 <p><strong>Período de Apostas:</strong></p>
-                <p>Início: ${formatDate(event.bettingStartDate)}</p>
-                <p>Fim: ${formatDate(event.bettingEndDate)}</p>
+                <p>Início: ${formatDate(event.betting_start_date)}</p>
+                <p>Fim: ${formatDate(event.betting_end_date)}</p>
             </div>
             <div class="finish-buttons">
                 <button onclick="finishEvent(${event.id}, true)" class="approve-button">Aconteceu</button>

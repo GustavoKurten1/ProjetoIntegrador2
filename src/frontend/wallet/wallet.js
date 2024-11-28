@@ -216,3 +216,59 @@ function updateBalanceDisplay(balance) {
         balanceElement.textContent = `Saldo: R$ ${numericBalance.toFixed(2).replace('.', ',')}`;
     }
 } 
+
+function showDepositModal() {
+    const modal = document.getElementById('paymentMethodModal');
+    modal.style.display = 'block';
+}
+
+function closePaymentMethodModal() {
+    const modal = document.getElementById('paymentMethodModal');
+    modal.style.display = 'none';
+}
+
+function showPaymentModal(type) {
+    closePaymentMethodModal();
+    if (type === 'pix') {
+        const modal = document.getElementById('pixModal');
+        modal.style.display = 'block';
+    } else if (type === 'credit') {
+        const modal = document.getElementById('depositModal');
+        modal.style.display = 'block';
+    }
+}
+
+function closePixModal() {
+    const modal = document.getElementById('pixModal');
+    modal.style.display = 'none';
+    document.getElementById('pixForm').reset();
+}
+
+// Adicionar handler para o formulário PIX
+document.getElementById('pixForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const amount = parseFloat(document.getElementById('pixAmount').value);
+
+        const response = await fetch(`${API_URL}/deposit`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ amount })
+        });
+
+        const data = await response.json();
+        closePixModal();
+        loadWalletBalance();
+
+        if (response.ok) {
+            document.getElementById('qrCode').src = data.qrCodeImage;
+            document.getElementById('qrCode').style.display = 'block';
+            document.getElementById('pixKey').textContent = data.pixKey;
+
+        } else {
+            alert(data.error || 'Erro ao gerar QR Code PIX');
+        }
+
+});

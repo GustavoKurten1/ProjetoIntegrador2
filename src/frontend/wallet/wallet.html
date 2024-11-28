@@ -21,6 +21,40 @@
         </div>
     </div>
 
+    <div id="paymentMethodModal" class="modal">
+    <div class="modal-content">
+        <h2>Escolha o Método de Pagamento</h2>
+        <div class="payment-methods">
+            <div class="payment-method" onclick="showPaymentModal('pix')">
+                <span>PIX</span>
+            </div>
+            <div class="payment-method" onclick="showPaymentModal('credit')">
+                <span>Cartão de Crédito</span>
+            </div>
+        </div>
+        <button type="button" onclick="closePaymentMethodModal()" class="cancel-button">Cancelar</button>
+    </div>
+</div>
+
+<!-- Modal de PIX -->
+<div id="pixModal" class="modal">
+    <div class="modal-content">
+        <h2>Pagamento via PIX</h2>
+        <form id="pixForm">
+            <div class="form-group">
+                <label for="pixAmount">Valor (R$):</label>
+                <input type="number" id="pixAmount" min="0" step="0.01" required>
+            </div>
+            <div class="qr-code-container">
+                <div id="pixKey" class="pix-key"></div>
+            </div>
+            <div class="button-group">
+                <button type="submit">Gerar QR Code</button>
+                <button type="button" onclick="closePixModal()">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
     <!-- Modal de Depósito -->
     <div id="depositModal" class="modal">
         <div class="modal-content">
